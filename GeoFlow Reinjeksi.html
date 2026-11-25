@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeoFlow Reinjeksi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: an engineering monitoring console, calm grey, colour reserved for abnormal states (ISA-101)
+   IDEA the plant's process flow diagram come alive: tagged equipment, blue brine lines, status on each well
+   PICTURE overview = live PFD of the reinjection line; silika page = solubility curve with the brine's path
+   COLOUR warm grey ground, white panels, ink; brine blue; orange Waspada, red Critical, teal kalibrasi
+   TYPE IBM Plex Sans throughout, weights for hierarchy
+   LAYOUT laptop: header + tab bar, page title finding, picture full width, cards below; phone: one column, PFD scrolls sideways */
+:root{color-scheme:light dark;--bg:light-dark(#ebeae5,#111214);--panel:light-dark(#ffffff,#1a1b1e);--ink:light-dark(#16181b,#eceef0);--mute:light-dark(#5b5f66,#a3a7ae);--line:light-dark(#d6d5cf,#2f3135);--grid:light-dark(#ecebe6,#232528);--brine:light-dark(#1f5fbf,#5d9bff);--warn:light-dark(#d2600c,#ff8a3d);--crit:light-dark(#c4231b,#ff5b50);--ok:light-dark(#6b7078,#8d9299);--data:light-dark(#a3a8ae,#5d6268);--cal:light-dark(#1f7a86,#5cc3d0);--soft:light-dark(#f5f4f0,#222326)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:110px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'IBM Plex Sans',system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1240px;margin:0 auto;padding:0 max(16px,3vw)}
+header.top{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar1{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between;padding-top:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand b{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.brand span{color:var(--mute);font-size:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-size:13px;color:var(--mute);white-space:nowrap}
+.chip.sim{border-color:var(--warn);color:var(--warn)}
+nav{display:flex;gap:4px;overflow-x:auto;margin-top:6px}
+nav a{flex:none;color:var(--mute);text-decoration:none;padding:10px 14px;border-bottom:3px solid transparent;font-weight:500;min-height:44px;display:flex;align-items:center}
+nav a[aria-current=page]{color:var(--ink);border-bottom-color:var(--ink)}
+nav a:focus-visible{outline:2px solid var(--brine)}
+main{padding:24px 0 48px}
+.page[hidden]{display:none}
+h1{font-size:clamp(26px,3.4vw,38px);line-height:1.08;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance;font-weight:600}
+.lead{color:var(--mute);margin:0 0 20px;max-width:75ch}
+h2{font-size:17px;margin:0 0 12px;font-weight:600}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.g{display:grid;gap:14px;margin-top:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:2fr 1fr}
+.cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.fig{position:relative;min-height:300px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.fig.sm{min-height:150px}.fig.xs{min-height:56px}
+svg text{font:12px 'IBM Plex Sans',sans-serif;fill:var(--mute);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.gl{stroke:var(--grid)}
+.scroll{overflow-x:auto}
+.pfd{min-width:720px}
+.pfd svg{width:100%;height:auto;display:block}
+.pfd .t{font-size:14px;fill:var(--ink)}.pfd .t2{font-size:12px}.pfd .c{text-anchor:middle}
+.pfd .eq{fill:none;stroke:var(--ink);stroke-width:1.4}
+.pfd .pipe{fill:none;stroke:var(--brine);stroke-width:3}
+.pfd .steam{fill:none;stroke:var(--crit);stroke-width:2.5}
+.pfd a{cursor:pointer}.pfd a:focus-visible rect{stroke-width:4}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.card:focus-visible{outline:2px solid var(--brine)}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .hd b{font-size:18px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
+.st i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:13px;color:var(--mute)}
+.kv b{display:block;color:var(--ink);font-size:16px;font-weight:600;line-height:1.3}
+.panel.flex{display:flex;flex-direction:column}.panel.flex .fig{flex:1}
+.alert{display:grid;grid-template-columns:6px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.alert:first-of-type{border-top:0}
+.alert .bar{border-radius:3px}
+.alert p{margin:2px 0 0;color:var(--mute);font-size:14px}
+.hist{display:grid;grid-template-columns:64px minmax(0,1fr);gap:6px 10px;align-items:center;font-size:13px}
+.cells{display:flex;gap:1px;height:20px}
+.cells i{flex:1;border-radius:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--mute);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 15px 'IBM Plex Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tabs button[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.tabs button:focus-visible{outline:2px solid var(--brine)}
+.whead{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+.big{font-size:clamp(26px,3vw,34px);font-weight:600;line-height:1.1;white-space:nowrap}
+.sub{color:var(--mute);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{color:var(--mute);font-weight:500;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:bottom}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.on td{background:color-mix(in srgb,var(--brine) 10%,transparent)}
+tr.on td:first-child{box-shadow:inset 3px 0 0 var(--brine)}
+.ssibar{position:relative;height:12px;background:var(--soft);border-radius:3px}
+.ssibar i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--brine)}
+.ssibar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+form{display:grid;gap:10px}
+label{font-size:13px;color:var(--mute);display:grid;gap:4px}
+input,select{font:16px 'IBM Plex Sans',sans-serif;min-height:44px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);color:var(--ink);width:100%}
+input:focus-visible,select:focus-visible{outline:2px solid var(--brine)}
+input[type=range]{padding:0;accent-color:var(--brine)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.btn{min-height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--panel);font:600 15px 'IBM Plex Sans',sans-serif;cursor:pointer;justify-self:start}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:focus-visible{outline:2px solid var(--brine);outline-offset:2px}
+.msg{font-size:14px;color:var(--cal);min-height:1.5em}
+.heat{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 10px;align-items:center;font-size:13px}
+.heat .cells{height:24px}
+.f{font-size:16px;padding:10px 12px;background:var(--soft);border-radius:8px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+ol.steps{margin:0;padding-left:22px}ol.steps li{margin:6px 0}
+dl{margin:0;display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:8px 16px}
+dt{font-weight:600}dd{margin:0;color:var(--mute)}
+.res{font-size:clamp(30px,4vw,44px);font-weight:600;line-height:1.1}
+.note{font-size:13px;color:var(--mute);margin-top:8px}
+.banner{border:1px dashed var(--warn);border-radius:8px;padding:10px 14px;color:var(--ink);font-size:14px;margin:0 0 16px;background:color-mix(in srgb,var(--warn) 7%,transparent)}
+.strip{display:flex;gap:1px;height:22px;margin-top:6px}.strip i{flex:1;border-radius:1px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.mc td:first-child{color:var(--mute)}
+footer{color:var(--mute);font-size:13px;padding:0 0 32px}
+@media(max-width:900px){.g3,.g2{grid-template-columns:minmax(0,1fr)}.whead{grid-template-columns:repeat(2,minmax(0,1fr))}.whead>:first-child{grid-column:1/-1}}
+@media(max-width:600px){table{font-size:13px}th,td{padding:6px 4px}dl{grid-template-columns:minmax(0,1fr)}dd{margin-bottom:8px}.hist,.heat{grid-template-columns:48px minmax(0,1fr)}}
+@media(prefers-reduced-motion:no-preference){.pfd .pipe{stroke-dasharray:14 6;animation:fl 1.6s linear infinite}@keyframes fl{to{stroke-dashoffset:-20}}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="bar1">
+      <div class="brand"><b>GeoFlow</b><span>Pemantauan jalur reinjeksi · indikasi awal scaling silika</span></div>
+      <div class="chips"><span class="chip sim">Data simulasi</span><span class="chip">Evaluasi 25 Nov 2026, 00.30 WIB</span></div>
+    </div>
+    <nav aria-label="Halaman">
+      <a href="#ringkasan">Ringkasan</a><a href="#sumur">Sumur</a><a href="#silika">Geokimia silika</a><a href="#data">Data &amp; log</a><a href="#uji">Uji skenario</a><a href="#metode">Cara kerja</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="page" id="p-ringkasan">
+    <h1 id="r-title">–</h1>
+    <p class="lead">Indikasi awal dari data instrumen yang sudah terpasang, bukan diagnosis kondisi reservoir. Klik sumur untuk melihat rinciannya.</p>
+    <div class="panel"><div class="scroll"><div class="pfd" id="pfd"></div></div></div>
+    <div class="g cards" id="r-cards"></div>
+    <div class="g g2">
+      <div class="panel"><h2>Perlu perhatian</h2><div id="r-alerts"></div><p class="note">Rekomendasi bersifat pemeriksaan; keputusan operasional tetap pada operator.</p></div>
+      <div class="panel"><h2>Riwayat status 60 hari</h2><div class="hist" id="r-hist"></div><div class="legend" id="r-leg"></div><p class="note">Status naik setelah 2 evaluasi berturut-turut dan turun setelah 3 evaluasi (histeresis).</p></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-sumur" hidden>
+    <div class="tabs" id="s-tabs" role="group" aria-label="Pilih sumur"></div>
+    <div class="whead">
+      <div class="panel"><h1 id="s-title" style="font-size:clamp(24px,2.8vw,32px)">–</h1><p id="s-interp" style="margin:6px 0"></p><p class="sub" id="s-rec"></p></div>
+      <div class="panel"><div class="sub">II relatif terhadap baseline</div><div class="big" id="s-ii">–</div><div class="sub" id="s-ii2"></div></div>
+      <div class="panel"><div class="sub">Laju perubahan 14 hari</div><div class="big" id="s-b">–</div><div class="sub" id="s-b2"></div></div>
+      <div class="panel"><div class="sub">Estimasi menuju Critical</div><div class="big" id="s-tc">–</div><div class="sub">ekstrapolasi tren linear, bukan prediksi reservoir</div></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h2>Indeks injektivitas semu relatif (II<sub>rel</sub>), 90 hari dan proyeksi 30 hari</h2><div class="fig" id="s-ch"><svg role="img" aria-label="Tren II relatif"></svg></div><div class="legend"><span><i style="background:var(--ink)"></i>hari dalam jendela 14 hari</span><span><i style="background:var(--data)"></i>hari valid lain</span><span><i style="background:var(--cal);opacity:.4"></i>periode baseline</span><span>garis tebal = regresi, segitiga = rentang proyeksi 95%</span></div></div>
+    <div class="g g2">
+      <div class="panel flex"><h2>Hambatan pipa relatif (R<sub>rel</sub>)</h2><div class="fig" id="s-r"><svg role="img" aria-label="Tren R relatif"></svg></div></div>
+      <div class="panel"><h2>Jejak perhitungan hari ini</h2><div class="scroll"><table id="s-calc"></table></div></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h2>Data mentah dari instrumen (90 hari)</h2><div class="g g2" id="s-raw" style="margin-top:0"></div></div>
+    <div class="panel" style="margin-top:14px"><h2>Matriks interpretasi</h2><div class="scroll"><table id="s-mx"></table></div><p class="note">Baris yang disorot adalah kondisi sumur ini hari ini.</p></div>
+  </section>
+
+  <section class="page" id="p-silika" hidden>
+    <h1 id="k-title">–</h1>
+    <p class="lead">Prinsipnya sama dengan pembentukan sinter di mata air panas: kelarutan silika amorf turun bersama suhu, sehingga brine yang mendingin di sepanjang jalur menjadi lewat jenuh.</p>
+    <div class="g g3" style="margin-top:0">
+      <div class="panel"><h2>Kelarutan silika terhadap suhu dan lintasan brine</h2><div class="fig" id="k-ch" style="min-height:360px"><svg role="img" aria-label="Kurva kelarutan silika"></svg></div><div class="legend"><span><i style="background:var(--ink)"></i>silika amorf (Fournier &amp; Rowe, 1977)</span><span><i style="background:var(--data)"></i>kuarsa (Fournier, 1977)</span><span><i style="background:var(--brine)"></i>SiO₂ brine hasil laboratorium</span><span><i style="background:var(--warn);opacity:.35"></i>zona lewat jenuh silika amorf</span></div></div>
+      <div class="panel"><h2>Suhu tiap tahap</h2>
+        <form id="k-form"><label>Separator (°C)<input id="k-t1" type="number" min="20" max="250" step="1"></label><label>Setelah pemanfaatan panas (°C)<input id="k-t2" type="number" min="20" max="250" step="1"></label><label>Kepala sumur reinjeksi (°C)<input id="k-t3" type="number" min="20" max="250" step="1"></label></form>
+        <p class="note">Nilai awal mengikuti skema pembangkit kaskade 170 → 140 → ±60 °C; ubah sesuai lapangan Anda.</p>
+        <div id="k-sum" style="margin-top:12px"></div>
+      </div>
+    </div>
+    <div class="g g2">
+      <div class="panel"><h2>SSI dan dosis inhibitor per sumur</h2><div class="scroll"><table id="k-ssi"></table></div><p class="note">Garis hitam pada bar = SSI 1. SSI di atas 1 sendirian tidak menaikkan status; status naik bila disertai dosis kurang atau tren hambatan.</p></div>
+      <div class="panel"><h2>Hasil laboratorium</h2><div class="scroll"><table id="k-lab"></table></div><p class="note">Sampel diencerkan di lapangan dan dianalisis sebagai silika total agar polimerisasi di botol tidak membuat nilai terbaca terlalu rendah.</p></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-data" hidden>
+    <h1 id="d-title">–</h1>
+    <p class="lead">Status hanya sah bila datanya sah. Halaman ini menunjukkan hari mana yang dipakai analisis, kesehatan alur data, dan log kejadian yang memengaruhi baseline.</p>
+    <div class="panel"><h2>Jam operasi stabil per hari, 30 hari terakhir</h2><div class="heat" id="d-heat"></div><div class="legend"><span><i style="background:var(--ok)"></i>hari valid (≥ 18 jam stabil)</span><span><i style="background:var(--warn);opacity:.55"></i>jam stabil kurang</span><span><i style="background:repeating-linear-gradient(45deg,var(--data) 0 3px,transparent 3px 6px)"></i>dikecualikan: shutdown atau 72 jam setelah intervensi</span></div></div>
+    <div class="g g2">
+      <div class="panel"><h2>Neraca massa harian: (Q<sub>sep</sub> − ΣQ<sub>injeksi</sub>) / Q<sub>sep</sub></h2><div class="fig sm" id="d-emb" style="min-height:200px"><svg role="img" aria-label="Neraca massa"></svg></div></div>
+      <div class="panel"><h2>Kesehatan alur data</h2><div class="scroll"><table id="d-pipe"></table></div></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h2>Log kejadian</h2><div class="scroll"><table id="d-log"></table></div></div>
+    <div class="g g2">
+      <div class="panel"><h2>Catat kejadian</h2>
+        <form id="f-ev"><div class="row"><label>Sumur<select id="ev-w"></select></label><label>Jenis<select id="ev-k"><option value="intervensi">Intervensi (acid job, pembersihan)</option><option value="shutdown">Shutdown</option><option value="operasi">Perubahan operasi</option></select></label></div><div class="row"><label>Mulai<input type="date" id="ev-d"></label><label>Selesai<input type="date" id="ev-e"></label></div><label>Keterangan<input id="ev-t" maxlength="80" placeholder="mis. pembersihan mekanis"></label><button class="btn" type="submit">Simpan kejadian</button><div class="msg" id="ev-msg" role="status"></div></form>
+      </div>
+      <div class="panel"><h2>Input hasil laboratorium</h2>
+        <form id="f-lab"><div class="row"><label>Tanggal sampel<input type="date" id="lb-d"></label><label>SiO₂ total (mg/kg)<input type="number" id="lb-c" min="50" max="1500" step="1" value="430"></label><label>pH (25 °C)<input type="number" id="lb-p" min="3" max="10" step="0.1" value="7.3"></label></div><button class="btn" type="submit">Simpan hasil</button><div class="msg" id="lb-msg" role="status"></div></form>
+        <button class="btn ghost" id="reset" type="button" style="margin-top:6px">Kembalikan data simulasi awal</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p-uji" hidden>
+    <h1 id="u-title">–</h1>
+    <p class="banner"><b>Skenario uji, bukan model fisik scaling.</b> Gangguan dibuat linear agar logika GeoFlow bisa diuji. Hasilnya membuktikan logika konsisten terhadap skenario buatan, bukan kinerja di lapangan.</p>
+    <div class="g g3" style="margin-top:0">
+      <div class="panel">
+        <h2>Kondisi sebenarnya dibandingkan yang dilihat GeoFlow</h2>
+        <div class="sub">II relatif</div><div class="fig sm" id="u-ii" style="min-height:220px"><svg role="img" aria-label="II sebenarnya dan terukur"></svg></div>
+        <div class="sub" style="margin-top:8px">R relatif (hambatan pipa)</div><div class="fig sm" id="u-r" style="min-height:150px"><svg role="img" aria-label="R sebenarnya dan terukur"></svg></div>
+        <div class="sub" style="margin-top:8px">Status yang dikeluarkan GeoFlow per hari</div><div class="strip" id="u-strip"></div>
+        <div class="legend"><span><i style="background:var(--brine)"></i>kondisi sebenarnya (tanpa derau)</span><span><i style="background:var(--data)"></i>nilai harian terukur</span><span><i style="background:var(--ink)"></i>jendela 14 hari dan regresi</span><span><i style="background:var(--warn)"></i>Waspada</span><span><i style="background:var(--crit)"></i>Critical</span></div>
+      </div>
+      <div class="panel">
+        <h2>Atur skenario</h2>
+        <form id="f-sim">
+          <label>Jenis gangguan<select id="u-j"><option value="sumur">Scaling di sumur</option><option value="pipa">Scaling di pipa</option><option value="dosis">Pompa dosis gagal</option><option value="shutdown">Shutdown 10 hari</option><option value="none">Tanpa gangguan</option></select></label>
+          <label>Laju scaling: <b id="u-lv"></b><input type="range" id="u-l" min="1" max="20" step="1" value="10"></label>
+          <label>Gangguan mulai hari ke-: <b id="u-mv"></b><input type="range" id="u-m" min="25" max="80" step="1" value="30"></label>
+          <label>Derau sensor σ: <b id="u-sv"></b><input type="range" id="u-s" min="0.3" max="3" step="0.1" value="1"></label>
+        </form>
+        <div class="btns" style="margin-top:12px"><button class="btn" type="button" id="u-run">Acak ulang</button><button class="btn ghost" type="button" id="u-play">Putar hari demi hari</button></div>
+        <div class="panel" style="margin-top:14px;background:var(--soft)"><div class="sub" id="u-day">–</div><div style="font-size:20px;font-weight:600" id="u-st">–</div><div class="sub" id="u-int"></div></div>
+      </div>
+    </div>
+    <div class="g cards" id="u-cards"></div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Uji berulang: 50 skenario dengan derau acak berbeda</h2>
+      <div class="btns"><button class="btn" type="button" id="u-mc">Jalankan 50 kali</button></div>
+      <div class="scroll" style="margin-top:12px"><table class="mc" id="u-mct"></table></div>
+      <div id="u-sent" style="margin-top:12px"></div>
+      <p class="note">Bandingkan waktu deteksi dengan kalkulator daya deteksi di halaman Cara kerja. Kutip hasil ini di Bagian 5 proposal beserta keterbatasannya.</p>
+    </div>
+  </section>
+
+  <section class="page" id="p-metode" hidden>
+    <h1>Dari sinyal sensor ke status: tujuh langkah yang bisa diperiksa ulang</h1>
+    <p class="lead">Semua angka di dashboard dihitung dengan langkah di bawah. Tidak ada angka status yang diketik manual.</p>
+    <div class="g g2" style="margin-top:0">
+      <div class="panel"><h2>Alur pengolahan harian</h2><ol class="steps">
+        <li><b>Akuisisi.</b> Q, P<sub>wh</sub>, P<sub>p</sub>, T, Q<sub>sep</sub>, dan dosis dibaca tiap menit dari historian melalui jalur baca saja.</li>
+        <li><b>Penyaringan.</b> Data di luar rentang fisik, sensor macet, dan lonjakan dibuang.</li>
+        <li><b>Jendela stabil.</b> Jam dipakai bila laju dan suhu stabil; hari valid bila ≥ 18 jam stabil; hari dalam 72 jam setelah intervensi dikecualikan.</li>
+        <li><b>Indikator.</b> II<sub>s</sub>, R<sub>p</sub>, SSI, dan neraca massa dihitung dari median jam stabil.</li>
+        <li><b>Baseline.</b> Median 14 hari valid pertama setelah sistem berjalan atau setelah intervensi.</li>
+        <li><b>Tren.</b> Regresi linear II<sub>rel</sub> pada 14 hari terakhir; tren diakui bila negatif dan signifikan (p &lt; 0,05).</li>
+        <li><b>Status.</b> Ambang di bawah, dengan persistensi 2 hari untuk naik dan 3 hari untuk turun.</li>
+      </ol></div>
+      <div class="panel"><h2>Rumus</h2>
+        <div class="f">P<sub>wh,k</sub> = P<sub>wh</sub> + g·h<sub>TVD</sub>·[ρ(T) − ρ(T<sub>ref</sub>)]·10⁻⁵</div>
+        <div class="f">II<sub>s</sub> = Q / P<sub>wh,k</sub> &nbsp;&nbsp; II<sub>rel</sub> = 100% · II<sub>s</sub> / II<sub>baseline</sub></div>
+        <div class="f">R<sub>p</sub> = (P<sub>p</sub> − P<sub>wh</sub> − ρ·g·Δz·10⁻⁵) / Q²</div>
+        <div class="f">log C<sub>eq</sub> = −731 / (T + 273,15) + 4,52 &nbsp;&nbsp; SSI = C<sub>SiO₂</sub> / C<sub>eq</sub></div>
+        <div class="f">II<sub>kritis</sub> = Q<sub>wajib</sub> / P<sub>wh,maks</sub> &nbsp;&nbsp; t<sub>c</sub> = (II<sub>kritis</sub> − II<sub>akhir</sub>) / b</div>
+        <p class="note">II<sub>s</sub> dihitung hanya bila P<sub>wh,k</sub> ≥ 2 barg; sumur injeksi gravitasi atau vakum di luar lingkup.</p>
+      </div>
+    </div>
+    <div class="g g2">
+      <div class="panel"><h2>Aturan status</h2><div class="scroll"><table><thead><tr><th>Status</th><th>Kondisi (salah satu terpenuhi)</th></tr></thead><tbody>
+        <tr><td><span class="st"><i style="background:var(--ok)"></i>Normal</span></td><td>II<sub>s</sub> &gt; 1,2 × II<sub>kritis</sub>, tanpa tren negatif signifikan, R<sub>rel</sub> &lt; 115%</td></tr>
+        <tr><td><span class="st"><i style="background:var(--warn)"></i>Waspada</span></td><td>II<sub>s</sub> ≤ 1,2 × II<sub>kritis</sub>; tren negatif dengan t<sub>c</sub> ≤ 60 hari; R<sub>rel</sub> ≥ 115%; atau SSI &gt; 1 dengan dosis &lt; 80% setpoint</td></tr>
+        <tr><td><span class="st"><i style="background:var(--crit)"></i>Critical</span></td><td>II<sub>s</sub> ≤ II<sub>kritis</sub>; t<sub>c</sub> ≤ 14 hari; atau R<sub>rel</sub> ≥ 130%</td></tr>
+        <tr><td><span class="st"><i style="background:var(--data)"></i>Data tidak cukup</span></td><td>Kurang dari 10 hari valid dalam jendela 14 hari</td></tr>
+        <tr><td><span class="st"><i style="background:var(--cal)"></i>Kalibrasi baseline</span></td><td>Belum ada 14 hari valid sejak intervensi terakhir</td></tr>
+      </tbody></table></div><p class="note">Angka 1,2; 115%; 130%; 60 dan 14 hari adalah nilai awal desain yang harus dikalibrasi dengan riwayat operator.</p></div>
+      <div class="panel"><h2>Kalkulator daya deteksi</h2>
+        <p class="sub" style="margin-top:0">Seberapa cepat penurunan II yang bisa dibedakan dari derau harian?</p>
+        <form id="f-det"><label>Derau nilai harian σ: <b id="dt-sv"></b><input type="range" id="dt-s" min="0.3" max="3" step="0.1" value="1"></label><label>Panjang jendela N: <b id="dt-nv"></b><input type="range" id="dt-n" min="7" max="30" step="1" value="14"></label></form>
+        <div class="res" id="dt-res">–</div><div class="sub">penurunan minimum yang terdeteksi (≈ 2 × galat baku kemiringan)</div>
+        <div id="dt-cmp" style="margin-top:12px"></div>
+        <p class="note">Nilai harian yang saling berkorelasi membuat angka sebenarnya lebih besar; perhitungan ini optimistis.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h2>Istilah</h2><dl>
+      <dt>Brine</dt><dd>Air panas sisa pemisahan di separator, kaya mineral terlarut termasuk silika.</dd>
+      <dt>Reinjeksi</dt><dd>Pengembalian brine ke reservoir untuk menjaga tekanan dan membuang fluida dengan aman.</dd>
+      <dt>Scaling silika</dt><dd>Pengendapan silika amorf (opal-A) di pipa, sumur, dan pori atau rekahan dekat sumur; padanan buatan dari sinter silika.</dd>
+      <dt>Indeks injektivitas semu</dt><dd>Laju injeksi dibagi tekanan kepala sumur terkoreksi. Menurut hukum Darcy nilainya sebanding dengan kemudahan batuan dekat sumur menerima fluida. Disebut semu karena tekanan reservoir tidak diukur.</dd>
+      <dt>Hambatan pipa R<sub>p</sub></dt><dd>Beda tekanan sepanjang pipa dibagi kuadrat laju alir; naik bila pipa menyempit.</dd>
+      <dt>SSI</dt><dd>Konsentrasi silika dibagi kelarutannya pada suhu itu; di atas 1 berarti lewat jenuh, sama logikanya dengan indeks kejenuhan kalsit pada airtanah.</dd>
+      <dt>Baseline</dt><dd>Nilai acuan kondisi bersih, diukur ulang setiap setelah intervensi.</dd>
+      <dt>Signifikan</dt><dd>Penurunan cukup besar dibanding naik-turun data harian sehingga kecil kemungkinannya hanya kebetulan.</dd>
+      <dt>Historian dan DCS</dt><dd>Sistem kendali pabrik dan arsip datanya; GeoFlow hanya membaca, tidak pernah menulis.</dd>
+      <dt>MQTT</dt><dd>Protokol pesan ringan untuk mengirim data dari gateway ke server, dienkripsi dengan TLS.</dd>
+    </dl></div>
+  </section>
+</main>
+<footer class="wrap">Seluruh angka adalah data simulasi berskenario untuk prototipe tugas IoT: RI-01 scaling sumur, RI-02 dosis inhibitor turun, RI-03 scaling pipa, RI-04 shutdown, RI-05 normal dengan perubahan setpoint.</footer>
+
+<script>
+{
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const fmt = (v, d = 1) => Number.isFinite(v) ? v.toLocaleString('id-ID', {minimumFractionDigits: d, maximumFractionDigits: d}) : '–';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+let seed = 20261125;
+const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+const gauss = () => { let u = 0; while (!u) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
+const med = a => { const b = a.filter(Number.isFinite).sort((x, y) => x - y), m = b.length >> 1; return !b.length ? NaN : b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const G = 9.81, N = 90, TODAY = N - 1, DAY0 = Date.UTC(2026, 7, 27);
+const rho = T => 1000 * (1 - (T + 288.9414) / (508929.2 * (T + 68.12963)) * (T - 3.9863) ** 2);
+const ceqA = T => 10 ** (-731 / (T + 273.15) + 4.52), ceqQ = T => 10 ** (-1309 / (T + 273.15) + 5.19);
+const tsat = C => -731 / (Math.log10(C) - 4.52) - 273.15;
+const TC = {8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179};
+const dstr = d => new Date(DAY0 + d * 864e5).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', timeZone: 'UTC'});
+const diso = d => new Date(DAY0 + d * 864e5).toISOString().slice(0, 10);
+const dnum = s => Math.round((Date.parse(s + 'T00:00:00Z') - DAY0) / 864e5);
+const ST = {normal: {l: 'Normal', c: 'var(--ok)', r: 0}, cal: {l: 'Kalibrasi baseline', c: 'var(--cal)', r: 1}, data: {l: 'Data tidak cukup', c: 'var(--data)', r: 1}, warn: {l: 'Waspada', c: 'var(--warn)', r: 2}, crit: {l: 'Critical', c: 'var(--crit)', r: 3}};
+const MX = [
+  {k: 'sumur', ii: 'Turun', r: 'Stabil', s: '> 1', o: '–', t: 'Indikasi scaling silika di sumur atau formasi dekat sumur', rec: 'Jadwalkan uji injektivitas dan tinjau dosis inhibitor; siapkan rencana pembersihan bila tren berlanjut.'},
+  {k: 'pipa', ii: 'Stabil', r: 'Naik', s: '> 1', o: '–', t: 'Indikasi scaling silika di pipa', rec: 'Periksa beda tekanan segmen pipa dan rencanakan pembersihan pipa (pigging).'},
+  {k: 'both', ii: 'Turun', r: 'Naik', s: '> 1', o: '–', t: 'Indikasi scaling di pipa dan sumur', rec: 'Periksa pipa dan sumur; prioritaskan uji injektivitas.'},
+  {k: 'nonsil', ii: 'Turun', r: 'Stabil', s: '≤ 1', o: 'Dosis normal', t: 'Hambatan aliran, kemungkinan penyebab non-silika', rec: 'Periksa partikel, perubahan operasi, atau tekanan reservoir.'},
+  {k: 'suhu', ii: 'Turun', r: '–', s: '–', o: 'T berubah > 5 °C', t: 'Tren dipengaruhi suhu, belum dapat disimpulkan', rec: 'Tunggu jendela dengan suhu stabil sebelum menyimpulkan.'},
+  {k: 'dini', ii: 'Stabil', r: 'Stabil', s: '> 1', o: 'Dosis kurang', t: 'Peringatan dini: potensi scaling meningkat', rec: 'Periksa pompa dosis dan setpoint inhibitor segera.'},
+  {k: 'emb', ii: '–', r: '–', s: '–', o: 'Neraca massa abnormal', t: 'Data laju dicurigai, status ditahan', rec: 'Periksa kalibrasi flowmeter.'},
+  {k: 'none', ii: 'Stabil', r: 'Stabil', s: '–', o: '–', t: 'Tidak ada tren hambatan aliran terdeteksi', rec: 'Tidak ada tindakan; lanjutkan pemantauan.'}];
+const MXK = Object.fromEntries(MX.map(m => [m.k, m]));
+MXK.data = {t: 'Data tidak cukup untuk menilai tren; status tidak boleh dibaca sebagai Normal', rec: 'Periksa log operasi dan kelengkapan data.'};
+MXK.cal = {t: 'Baseline baru sedang dikumpulkan setelah intervensi', rec: 'Kumpulkan 14 hari valid untuk baseline baru.'};
+
+const WELLS = [
+  {id: 'RI-01', scen: 'sumur', Qs: 180, II0: 18, dp0: 2.4, h: 1200, dz: 15, Qw: 180, Pmax: 16, T0: 61, dose: 1},
+  {id: 'RI-02', scen: 'dosis', Qs: 150, II0: 16, dp0: 2.0, h: 1100, dz: 10, Qw: 150, Pmax: 15, T0: 60, dose: 1},
+  {id: 'RI-03', scen: 'pipa', Qs: 120, II0: 14, dp0: 1.8, h: 1000, dz: 20, Qw: 120, Pmax: 13.7, T0: 63, dose: .93},
+  {id: 'RI-04', scen: 'data', Qs: 60, II0: 12, dp0: 1.2, h: 900, dz: 5, Qw: 60, Pmax: 8, T0: 59, dose: 1},
+  {id: 'RI-05', scen: 'normal', Qs: 140, II0: 15, dp0: 2.2, h: 1150, dz: 12, Qw: 140, Pmax: 14.5, T0: 62, dose: 1}];
+const EV0 = [{d: 0, e: 0, w: 'RI-01', k: 'intervensi', t: 'Acid job sumur'}, {d: 50, e: 50, w: 'RI-05', k: 'operasi', t: 'Setpoint laju 140 → 125 t/jam'}, {d: 76, e: 85, w: 'RI-04', k: 'shutdown', t: 'Shutdown pemeliharaan'}];
+const LAB0 = [];
+for (let d = 2; d < N; d += 7) LAB0.push({d, c: Math.round(415 + 8 * gauss()), pH: Math.round((7.4 + 0.1 * gauss()) * 10) / 10});
+let EVENTS = EV0.map(e => ({...e})), LAB = LAB0.map(l => ({...l}));
+
+for (const w of WELLS) {
+  const R0 = w.dp0 / w.Qs ** 2;
+  w.raw = [];
+  for (let d = 0; d < N; d++) {
+    const shut = w.scen === 'data' && d >= 76 && d <= 85;
+    const Qset = w.scen === 'normal' && d >= 50 ? 125 : w.Qs;
+    const T = w.T0 + 0.8 * gauss();
+    const Q = shut ? 0 : Qset * (1 + 0.008 * gauss());
+    let II = w.II0;
+    if (w.scen === 'sumur' && d > 16) II = w.II0 * (1 - 0.0038 * (d - 16));
+    if (w.scen === 'data') II = w.II0 * (1 - 0.0008 * d);
+    const R = w.scen === 'pipa' ? R0 * (1 + 0.0028 * d) : R0;
+    const Pwhk = shut ? 0 : Q / II * (1 + 0.008 * gauss());
+    const Pwh = shut ? 0 : Pwhk - G * w.h * (rho(T) - rho(w.T0)) * 1e-5;
+    const Pp = shut ? 0 : Pwh + rho(T) * G * w.dz * 1e-5 + R * Q * Q * (1 + 0.01 * gauss());
+    let dose = w.dose + 0.02 * gauss();
+    if (w.scen === 'dosis' && d >= 87) dose = 0.62 + 0.02 * gauss();
+    let hrs = shut ? 0 : Math.max(0, Math.min(24, Math.round(22 + 1.2 * gauss())));
+    if (!shut && rnd() < 0.03) hrs = 12;
+    if (w.scen === 'normal' && d === 50) hrs = 14;
+    w.raw.push({d, Q, Pwh, Pp, T, dose, hrs});
+  }
+}
+const QSEP = Array.from({length: N}, (_, d) => WELLS.reduce((s, w) => s + w.raw[d].Q, 0) * (1 + 0.004 * gauss()) + 4);
+let EMB = [], EMBF = [];
+
+function computeAll() {
+  EMB = QSEP.map((q, d) => (q - WELLS.reduce((s, w) => s + w.raw[d].Q, 0)) / q * 100);
+  EMBF = EMB.map((_, d) => d >= 2 && [0, 1, 2].every(k => Math.abs(EMB[d - k]) > 5));
+  WELLS.forEach(w => computeWell(w));
+}
+function labAt(d) { let c = LAB.filter(l => l.d <= d).sort((a, b) => a.d - b.d).pop(); return c || [...LAB].sort((a, b) => a.d - b.d)[0]; }
+function computeWell(w, evs) {
+  const ev = (evs || EVENTS).filter(e => e.w === w.id);
+  const excl = d => ev.some(e => e.k !== 'operasi' && d >= e.d && d <= e.e + 3);
+  const ints = ev.filter(e => e.k === 'intervensi').map(e => e.e);
+  w.start = ints.length ? Math.max(...ints) + 4 : 0;
+  w.days = w.raw.map(r => ({...r, excl: excl(r.d), valid: r.hrs >= 18 && !excl(r.d) && r.Q > 0}));
+  const pre = w.days.filter(x => x.valid && x.d >= w.start).slice(0, 14);
+  w.Tref = pre.length ? pre.reduce((s, x) => s + x.T, 0) / pre.length : w.T0;
+  for (const x of w.days) {
+    x.rho = rho(x.T); x.dcor = G * w.h * (x.rho - rho(w.Tref)) * 1e-5; x.Pwhk = x.Pwh + x.dcor;
+    x.IIs = x.Q > 0 && x.Pwhk >= 2 ? x.Q / x.Pwhk : NaN;
+    if (!Number.isFinite(x.IIs)) x.valid = false;
+    x.fr = x.Q > 0 ? x.Pp - x.Pwh - x.rho * G * w.dz * 1e-5 : NaN;
+    x.Rp = x.Q > 0 ? x.fr / (x.Q * x.Q) : NaN;
+    const lb = w.labC ? {c: w.labC, d: 0} : labAt(x.d); x.C = lb.c; x.lab = lb; x.ssi = x.C / ceqA(x.T);
+  }
+  const base = w.days.filter(x => x.valid && x.d >= w.start).slice(0, 14);
+  w.baseEnd = base.length === 14 ? base[13].d : Infinity;
+  w.baseStart = base.length ? base[0].d : w.start;
+  w.IIb = med(base.map(x => x.IIs)); w.Rb = med(base.map(x => x.Rp));
+  for (const x of w.days) { x.ii = x.IIs / w.IIb * 100; x.r = x.Rp / w.Rb * 100; }
+  w.IIk = w.Qw / w.Pmax; w.critRel = w.IIk / w.IIb * 100;
+  w.hist = [];
+  for (let D = 0; D < N; D++) w.hist.push(evalDay(w, D));
+  let cur = 'normal', up = 0, dn = 0, pend = 9;
+  for (const a of w.hist) {
+    if (a.st === 'cal' || a.st === 'data') { a.ps = a.st; up = dn = 0; continue; }
+    if (a.hold) { a.ps = cur; continue; }
+    const rc = ST[a.st].r, rr = ST[cur].r;
+    if (rc > rr) { pend = up ? Math.min(pend, rc) : rc; up++; dn = 0; if (up >= 2) { cur = pend === 3 ? 'crit' : 'warn'; up = 0; } }
+    else if (rc < rr) { pend = dn ? Math.max(pend, rc) : rc; dn++; up = 0; if (dn >= 3) { cur = pend === 3 ? 'crit' : pend === 2 ? 'warn' : 'normal'; dn = 0; } }
+    else { up = dn = 0; }
+    a.ps = cur;
+  }
+  w.a = w.hist[TODAY];
+}
+function evalDay(w, D) {
+  const a = {D, crit: w.critRel, warnL: 1.2 * w.critRel};
+  if (D < w.start || D < w.baseEnd) { a.st = 'cal'; a.key = 'cal'; return a; }
+  const win = w.days.filter(x => x.valid && x.d > D - 14 && x.d <= D && x.d >= w.start);
+  a.n = win.length; a.win = win;
+  const rec = w.days.filter(x => x.valid && x.d <= D && x.d >= w.start).slice(-3);
+  a.R = med(rec.map(x => x.r));
+  const td = w.days[D]; a.ssi = td.ssi; a.doseLow = td.dose < 0.8;
+  const tw = win.map(x => x.T); a.dT = tw.length ? Math.max(...tw) - Math.min(...tw) : 0;
+  if (a.n < 10) { a.st = 'data'; a.key = 'data'; return a; }
+  const n = a.n, mx = win.reduce((s, x) => s + x.d, 0) / n, my = win.reduce((s, x) => s + x.ii, 0) / n;
+  const sxx = win.reduce((s, x) => s + (x.d - mx) ** 2, 0);
+  a.b = win.reduce((s, x) => s + (x.d - mx) * (x.ii - my), 0) / sxx; a.a0 = my - a.b * mx;
+  a.se = Math.sqrt(win.reduce((s, x) => s + (x.ii - a.a0 - a.b * x.d) ** 2, 0) / (n - 2) / sxx);
+  a.t = TC[n - 2] || 2.179; a.tstat = a.b / a.se;
+  a.level = a.a0 + a.b * D;
+  a.sig = a.b < 0 && Math.abs(a.tstat) > a.t;
+  if (a.sig) { const lo = a.b - a.t * a.se, hi = a.b + a.t * a.se; a.tc = (a.crit - a.level) / a.b; a.tcLo = Math.max(0, (a.crit - a.level) / lo); a.tcHi = hi < 0 ? (a.crit - a.level) / hi : Infinity; }
+  const iiDown = a.sig || a.level <= a.warnL, rUp = a.R >= 115, sat = a.ssi > 1;
+  if ((w.embf || EMBF)[D]) { a.key = 'emb'; a.hold = true; }
+  else if (iiDown && a.dT > 5) a.key = 'suhu';
+  else if (iiDown && rUp && sat) a.key = 'both';
+  else if (iiDown && sat) a.key = 'sumur';
+  else if (iiDown) a.key = 'nonsil';
+  else if (rUp) a.key = 'pipa';
+  else if (sat && a.doseLow) a.key = 'dini';
+  else a.key = 'none';
+  if (a.level <= a.crit || (a.sig && a.tc <= 14) || a.R >= 130) a.st = 'crit';
+  else if (a.level <= a.warnL || (a.sig && a.tc <= 60) || rUp || (sat && a.doseLow)) a.st = 'warn';
+  else a.st = 'normal';
+  return a;
+}
+const tcText = a => a.st === 'cal' || a.st === 'data' ? 'tidak dinilai' : !a.sig ? 'tidak dapat diestimasi' : a.tcLo > 60 ? '> 60 hari' : `${Math.round(a.tcLo)}–${a.tcHi > 60 ? '> 60' : Math.round(a.tcHi)} hari`;
+const stc = s => ST[s].c;
+const badge = s => `<span class="st"><i style="background:${stc(s)}"></i>${ST[s].l}</span>`;
+
+const draws = new WeakMap();
+const ro = new ResizeObserver(es => { for (const e of es) { const f = draws.get(e.target); if (f) f(); } });
+function reg(el, fn) { draws.set(el, fn); ro.observe(el); fn(); }
+function chart(host, o) {
+  const svg = host.querySelector('svg'), W = host.clientWidth, H = host.clientHeight;
+  if (!W || !H) return;
+  const m = Object.assign({l: 46, r: 14, t: 14, b: 26}, o.m || {});
+  const X = v => m.l + (v - o.x0) / (o.x1 - o.x0) * (W - m.l - m.r), Y = v => m.t + (o.y1 - v) / (o.y1 - o.y0) * (H - m.t - m.b);
+  let s = '';
+  for (const b of o.bands || []) s += `<rect x="${X(b.a)}" y="${m.t}" width="${Math.max(0, X(b.b) - X(b.a))}" height="${H - m.t - m.b}" style="fill:${b.c};opacity:${b.op ?? .12}"/>`;
+  for (const v of o.yt || []) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" class="gl"/>` + (o.noAxis ? '' : `<text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${o.yf ? o.yf(v) : v}</text>`);
+  (o.xt || []).filter((t, i) => W >= 520 || i % 2 === 0).forEach(([v, l, an]) => { s += `<text x="${X(v)}" y="${H - 6}" text-anchor="${an || 'middle'}">${l}</text>`; });
+  for (const p of o.polys || []) s += `<path d="M${p.pts.map(([a, b]) => X(a).toFixed(1) + ' ' + Y(b).toFixed(1)).join('L')}Z" style="fill:${p.c};opacity:${p.op ?? .15}"/>`;
+  for (const v of o.vl || []) s += `<line x1="${X(v.v)}" x2="${X(v.v)}" y1="${m.t}" y2="${H - m.b}" style="stroke:${v.c || 'var(--mute)'}" stroke-dasharray="${v.dash || ''}"/>` + (v.l ? `<text x="${X(v.v) + 4}" y="${m.t + 12 + (v.dy || 0)}" style="fill:${v.c || 'var(--mute)'}">${v.l}</text>` : '');
+  for (const h of o.hl || []) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(h.v)}" y2="${Y(h.v)}" style="stroke:${h.c}" stroke-dasharray="5 4"/>` + (h.l ? `<text x="${W - m.r}" y="${Y(h.v) + (h.below ? 15 : -5)}" text-anchor="end" style="fill:${h.c}">${h.l}</text>` : '');
+  for (const se of o.ser || []) {
+    const p = se.p.filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
+    if (!p.length) continue;
+    if (se.k === 'dot') s += p.map(([a, b]) => `<circle cx="${X(a).toFixed(1)}" cy="${Y(b).toFixed(1)}" r="${se.r || 2}" style="fill:${se.c}"/>`).join('');
+    else s += `<path d="M${p.map(([a, b]) => X(a).toFixed(1) + ' ' + Y(b).toFixed(1)).join('L')}" style="fill:none;stroke:${se.c};stroke-width:${se.w || 2}" stroke-dasharray="${se.dash || ''}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  for (const t of o.tx || []) s += `<text x="${X(t.x) + (t.dx || 0)}" y="${Y(t.y) + (t.dy || 0)}" text-anchor="${t.a || 'start'}" style="fill:${t.c || 'var(--ink)'};font-weight:${t.b ? 600 : 400}">${t.t}</text>`;
+  svg.innerHTML = s;
+}
+const dayTicks = (x1) => [[TODAY - 60, '−60 hari'], [TODAY - 30, '−30 hari'], [TODAY, 'hari ini'], ...(x1 > TODAY + 5 ? [[TODAY + 30, '+30 hari', 'end']] : [])];
+
+let sel = 0;
+const stage = {t1: 170, t2: 140, t3: null};
+
+function renderRingkasan() {
+  const ab = WELLS.filter(w => w.a.ps === 'warn' || w.a.ps === 'crit');
+  const urgent = [...WELLS].sort((x, y) => ST[y.a.ps].r - ST[x.a.ps].r || (x.a.tcLo ?? 999) - (y.a.tcLo ?? 999))[0];
+  $('#r-title').textContent = ab.length ? `${ab.length} dari ${WELLS.length} sumur perlu perhatian; ${urgent.id} paling mendesak${urgent.a.sig ? `, ambang Critical dalam ${tcText(urgent.a)}` : ''}` : 'Semua sumur reinjeksi dalam kondisi Normal';
+  const xs = [540, 640, 740, 840, 940], T3 = stage.t3;
+  let s = `<svg viewBox="0 0 1000 340" role="img" aria-label="Skema jalur reinjeksi dan status tiap sumur">`;
+  s += `<rect x="30" y="66" width="80" height="150" rx="30" class="eq"/><text x="70" y="138" class="t c">V-101</text><text x="70" y="156" class="t2 c">Separator</text>`;
+  s += `<path d="M70 66V30" class="steam"/><path d="M64 38L70 28L76 38z" style="fill:var(--crit)"/><text x="80" y="42" class="t2">uap ke turbin</text>`;
+  s += `<path d="M110 120H176" class="pipe"/><text x="114" y="108" class="t2">±${fmt(stage.t1, 0)} °C</text>`;
+  s += `<rect x="176" y="88" width="164" height="64" rx="4" class="eq" stroke-dasharray="5 4"/><text x="258" y="116" class="t c">Pemanfaatan panas</text><text x="258" y="134" class="t2 c">ORC dan langsung</text>`;
+  s += `<path d="M340 120H372" class="pipe"/><circle cx="388" cy="120" r="16" class="eq"/><path d="M382 112L396 120L382 128z" class="eq"/><text x="388" y="92" class="t2 c">P-401</text>`;
+  s += `<path d="M404 120H${xs[4]}" class="pipe"/><text x="414" y="108" class="t2">header reinjeksi ±${fmt(T3, 0)} °C · SiO₂ ${labAt(TODAY).c} mg/kg</text>`;
+  WELLS.forEach((w, i) => {
+    const x = xs[i], a = w.a, hot = a.ps === 'warn' || a.ps === 'crit';
+    s += `<path d="M${x} 120V194" class="pipe"/>`;
+    s += `<a href="#sumur" data-w="${i}" aria-label="${w.id} ${ST[a.ps].l}"><rect x="${x - 12}" y="194" width="24" height="7" class="eq"/><line x1="${x - 6}" y1="201" x2="${x - 6}" y2="232" class="eq"/><line x1="${x + 6}" y1="201" x2="${x + 6}" y2="232" class="eq"/><line x1="${x - 28}" y1="214" x2="${x + 28}" y2="214" class="eq"/>`;
+    s += `<rect x="${x - 46}" y="240" width="92" height="88" rx="6" style="fill:${hot ? `color-mix(in srgb,${stc(a.ps)} 12%,transparent)` : 'transparent'};stroke:${hot ? stc(a.ps) : 'var(--ink)'};stroke-width:${hot ? 2.5 : 1.3}"/>`;
+    s += `<text x="${x}" y="262" class="t c" style="font-weight:600">${w.id}</text><text x="${x}" y="282" class="t2 c" style="fill:${hot || a.ps !== 'normal' ? stc(a.ps) : 'var(--mute)'};font-weight:600">${a.ps === 'data' ? 'Data kurang' : a.ps === 'cal' ? 'Kalibrasi' : ST[a.ps].l}</text><text x="${x}" y="302" class="t2 c">II ${Number.isFinite(a.level) ? fmt(a.level, 0) + '%' : '–'}</text><text x="${x}" y="318" class="t2 c">${w.raw[TODAY].Q > 0 ? Math.round(w.raw[TODAY].Q) + ' t/jam' : 'tidak beroperasi'}</text></a>`;
+  });
+  s += `</svg>`;
+  $('#pfd').innerHTML = s;
+  $('#r-cards').innerHTML = WELLS.map((w, i) => { const a = w.a; return `<button class="card" type="button" data-w="${i}"><div class="hd"><b>${w.id}</b>${badge(a.ps)}</div><div class="fig xs" data-spark="${i}"><svg aria-hidden="true"></svg></div><div class="kv"><div>II rel<b>${Number.isFinite(a.level) ? fmt(a.level, 0) + '%' : '–'}</b></div><div>Laju<b>${a.sig ? fmt(a.b * 30) + '%/bln' : '–'}</b></div><div>R rel<b>${fmt(a.R, 0)}%</b></div><div>t<sub>c</sub><b>${a.sig ? tcText(a) : a.n >= 10 ? 'tidak ada tren' : 'tidak dinilai'}</b></div></div></button>`; }).join('');
+  $$('[data-spark]').forEach(el => { const w = WELLS[+el.dataset.spark]; reg(el, () => chart(el, {x0: 0, x1: TODAY, y0: 55, y1: 110, m: {l: 2, r: 2, t: 4, b: 4}, noAxis: true, hl: [{v: w.a.warnL, c: 'var(--warn)'}], ser: [{p: w.days.filter(x => x.valid).map(x => [x.d, x.ii]), c: stc(w.a.ps === 'normal' ? 'normal' : w.a.ps), w: 1.5}]})); });
+  const al = WELLS.filter(w => w.a.ps !== 'normal').sort((x, y) => ST[y.a.ps].r - ST[x.a.ps].r);
+  $('#r-alerts').innerHTML = al.length ? al.map(w => { const m = MXK[w.a.key]; return `<div class="alert"><i class="bar" style="background:${stc(w.a.ps)}"></i><div><b>${w.id} · ${ST[w.a.ps].l}</b><p>${esc(m.t)}.</p><p>${esc(m.rec)}</p></div></div>`; }).join('') : '<p class="sub">Tidak ada sumur yang perlu perhatian.</p>';
+  $('#r-hist').innerHTML = WELLS.map(w => `<span>${w.id}</span><div class="cells">${w.hist.slice(N - 60).map(a => `<i title="${dstr(a.D)}: ${ST[a.ps].l}" style="background:${stc(a.ps)};opacity:${a.ps === 'normal' ? .35 : 1}"></i>`).join('')}</div>`).join('') + `<span></span><div class="sub" style="display:flex;justify-content:space-between"><span>${dstr(N - 60)}</span><span>${dstr(TODAY)}</span></div>`;
+  $('#r-leg').innerHTML = Object.keys(ST).map(k => `<span><i style="background:${stc(k)};opacity:${k === 'normal' ? .35 : 1}"></i>${ST[k].l}</span>`).join('');
+}
+
+function renderSumur() {
+  const w = WELLS[sel], a = w.a, x = w.days[TODAY], m = MXK[a.key];
+  $('#s-tabs').innerHTML = WELLS.map((v, i) => `<button type="button" data-tab="${i}" aria-pressed="${i === sel}"><i style="width:10px;height:10px;border-radius:2px;background:${stc(v.a.ps)}"></i>${v.id}</button>`).join('');
+  $('#s-title').innerHTML = `${w.id} · <span style="color:${a.ps === 'normal' ? 'inherit' : stc(a.ps)}">${ST[a.ps].l}</span>`;
+  $('#s-interp').textContent = m.t + (a.st !== a.ps ? ` (kandidat status hari ini: ${ST[a.st].l}; menunggu persistensi)` : '') + '.';
+  $('#s-rec').textContent = 'Rekomendasi pemeriksaan: ' + m.rec;
+  $('#s-ii').textContent = fmt(a.level) + '%';
+  $('#s-ii2').textContent = `Waspada ≤ ${fmt(a.warnL)}% · Critical ≤ ${fmt(a.crit)}%`;
+  $('#s-b').textContent = a.n >= 10 ? fmt(a.b * 30) + '%/bln' : '–';
+  $('#s-b2').textContent = a.n >= 10 ? `${a.n} hari valid · ${a.sig ? 'signifikan (p < 0,05)' : 'tidak signifikan'}` : `${a.n ?? 0} dari 14 hari valid`;
+  $('#s-tc').textContent = tcText(a);
+  const col = a.ps === 'normal' ? 'var(--ink)' : stc(a.ps);
+  reg($('#s-ch'), () => {
+    const v = w.days.filter(d => d.valid), mn = Math.min(55, Math.floor(Math.min(...v.map(d => d.ii)) - 3));
+    const o = {x0: 0, x1: TODAY + 30, y0: mn, y1: 110, yt: [60, 70, 80, 90, 100, 110].filter(t => t >= mn), yf: t => t + '%', xt: dayTicks(TODAY + 30),
+      bands: [{a: w.baseStart, b: Math.min(w.baseEnd, TODAY), c: 'var(--cal)', op: .12}],
+      hl: [{v: a.warnL, c: 'var(--warn)', l: `Waspada ${fmt(a.warnL)}%`}, {v: a.crit, c: 'var(--crit)', l: `Critical ${fmt(a.crit)}%`, below: true}],
+      vl: [...EVENTS.filter(e => e.w === w.id).map(e => ({v: e.d, l: esc(e.t), c: 'var(--mute)', dash: '3 3'})), {v: TODAY, c: 'var(--line)'}],
+      ser: [{k: 'dot', p: v.filter(d => !(a.win || []).includes(d)).map(d => [d.d, d.ii]), c: 'var(--data)'}, {k: 'dot', p: (a.win || []).map(d => [d.d, d.ii]), c: 'var(--ink)', r: 3}], polys: []};
+    if (a.n >= 10) {
+      o.ser.push({p: [[TODAY - 13, a.a0 + a.b * (TODAY - 13)], [TODAY, a.level]], c: col, w: 3.5});
+      if (a.sig) { const lo = a.b - a.t * a.se, hi = Math.min(0, a.b + a.t * a.se); o.polys.push({pts: [[TODAY, a.level], [TODAY + 30, a.level + lo * 30], [TODAY + 30, a.level + hi * 30]], c: col, op: .14}); o.ser.push({p: [[TODAY, a.level], [TODAY + 30, a.level + a.b * 30]], c: col, w: 2, dash: '3 4'}); }
+    }
+    chart($('#s-ch'), o);
+  });
+  reg($('#s-r'), () => {
+    const v = w.days.filter(d => d.valid), mx = Math.max(136, Math.ceil(Math.max(...v.map(d => d.r)) + 3));
+    const roll = v.map((d, i) => [d.d, med(v.slice(Math.max(0, i - 6), i + 1).map(q => q.r))]);
+    chart($('#s-r'), {x0: 0, x1: TODAY, y0: 90, y1: mx, yt: [90, 100, 110, 120, 130].filter(t => t <= mx), yf: t => t + '%', xt: [[0, '−90 hari', 'start'], [TODAY, 'hari ini', 'end']], hl: [{v: 115, c: 'var(--warn)', l: 'Waspada 115%'}, {v: 130, c: 'var(--crit)', l: 'Critical 130%'}], ser: [{k: 'dot', p: v.map(d => [d.d, d.r]), c: 'var(--data)'}, {p: roll, c: 'var(--ink)', w: 2}]});
+  });
+  const rows = x.Q > 0 ? [
+    ['Laju alir Q', 'FT', fmt(x.Q) + ' t/jam'], ['Tekanan kepala sumur P_wh', 'PT', fmt(x.Pwh, 2) + ' barg'], ['Suhu T dan T_ref', 'TT', `${fmt(x.T)} / ${fmt(w.Tref)} °C`],
+    ['Koreksi g·h·[ρ(T) − ρ(T_ref)]', `h = ${w.h} m`, fmt(x.dcor, 3) + ' bar'], ['P_wh,k', 'P_wh + koreksi', fmt(x.Pwhk, 2) + ' barg'],
+    ['II_s', 'Q / P_wh,k', fmt(x.IIs, 2) + ' t/jam/bar'], ['II baseline', 'median 14 hari', fmt(w.IIb, 2) + ' t/jam/bar'], ['II_rel hari ini', 'II_s / baseline', fmt(x.ii) + '%'],
+    ['II_kritis', `${w.Qw} / ${w.Pmax}`, `${fmt(w.IIk, 2)} t/jam/bar (${fmt(a.crit)}%)`],
+    ['ΔP gesekan pipa', 'P_p − P_wh − ρgΔz', fmt(x.fr, 2) + ' bar'], ['R_rel hari ini', 'R_p / baseline', fmt(x.r) + '%'],
+    ['Kemiringan b', a.n >= 10 ? `t = ${fmt(a.tstat, 2)}, batas ${fmt(a.t, 2)}` : '–', a.n >= 10 ? fmt(a.b, 3) + ' %/hari' : '–']]
+    : [['Laju alir Q', 'FT', 'sumur tidak beroperasi']];
+  $('#s-calc').innerHTML = `<thead><tr><th>Besaran</th><th>Dasar</th><th class="n">Nilai</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="sub">${esc(r[1])}</td><td class="n">${esc(r[2])}</td></tr>`).join('')}</tbody>`;
+  const raws = [['Q', 'Laju alir (t/jam)', d => d.Q], ['Pwh', 'Tekanan kepala sumur (barg)', d => d.Pwh], ['Pp', 'Tekanan pompa (barg)', d => d.Pp], ['T', 'Suhu (°C)', d => d.T]];
+  $('#s-raw').innerHTML = raws.map(([k, l]) => `<div><div class="sub">${l}</div><div class="fig sm" data-raw="${k}"><svg aria-hidden="true"></svg></div></div>`).join('');
+  raws.forEach(([k, , f]) => { const el = $(`[data-raw="${k}"]`); reg(el, () => { const p = w.days.filter(d => d.Q > 0).map(d => [d.d, f(d)]), ys = p.map(q => q[1]), lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * .15 || 1; chart(el, {x0: 0, x1: TODAY, y0: lo - pad, y1: hi + pad, m: {l: 40, b: 8}, yt: [lo, hi].map(v => Math.round(v * 10) / 10), yf: v => fmt(v), ser: [{p, c: 'var(--brine)', w: 1.5}, {k: 'dot', p: w.days.filter(d => d.Q > 0 && !d.valid).map(d => [d.d, f(d)]), c: 'var(--warn)', r: 2.5}]}); }); });
+  $('#s-mx').innerHTML = `<thead><tr><th>II_rel</th><th>R_rel</th><th>SSI</th><th>Kondisi lain</th><th>Interpretasi</th></tr></thead><tbody>${MX.map(r => `<tr class="${r.k === a.key ? 'on' : ''}"><td>${r.ii}</td><td>${r.r}</td><td>${r.s}</td><td>${r.o}</td><td>${r.t}</td></tr>`).join('')}</tbody>`;
+}
+
+function renderSilika() {
+  const C = labAt(TODAY).c, Ts = tsat(C), T3 = stage.t3;
+  $('#k-title').textContent = `Brine dengan SiO₂ ${C} mg/kg menjadi lewat jenuh silika amorf di bawah ±${fmt(Ts, 0)} °C`;
+  $('#k-t1').value = stage.t1; $('#k-t2').value = stage.t2; $('#k-t3').value = fmt(T3, 0).replace(',', '.');
+  const pts = [['Separator', stage.t1], ['Setelah pemanfaatan', stage.t2], ['Reinjeksi', T3]];
+  $('#k-sum').innerHTML = `<table><thead><tr><th>Tahap</th><th class="n">T</th><th class="n">SSI</th></tr></thead><tbody>${pts.map(([l, t]) => `<tr><td>${l}</td><td class="n">${fmt(t, 0)} °C</td><td class="n" style="${C / ceqA(t) > 1 ? 'color:var(--warn);font-weight:600' : ''}">${fmt(C / ceqA(t), 2)}</td></tr>`).join('')}</tbody></table>`;
+  reg($('#k-ch'), () => {
+    const curve = []; for (let t = 20; t <= 200; t += 2) curve.push([t, ceqA(t)]);
+    const qz = []; for (let t = 20; t <= 200; t += 2) qz.push([t, ceqQ(t)]);
+    const lo = Math.max(20, Math.min(200, Ts)), zone = [[20, C], [lo, C], ...curve.filter(p => p[0] <= lo).reverse()];
+    const W = $('#k-ch').clientWidth;
+    chart($('#k-ch'), {x0: 20, x1: 200, y0: 0, y1: 1000, m: {l: 52, b: 30}, yt: [0, 200, 400, 600, 800, 1000], yf: v => v + ' mg/kg', xt: [[20, '20 °C', 'start'], [60, '60'], [100, '100'], [140, '140'], [200, '200 °C', 'end']],
+      polys: [{pts: zone, c: 'var(--warn)', op: .22}], vl: [{v: Ts, c: 'var(--warn)', l: `jenuh ±${fmt(Ts, 0)} °C`, dash: '4 3'}],
+      ser: [{p: qz, c: 'var(--data)', w: 2, dash: '6 4'}, {p: curve, c: 'var(--ink)', w: 2.5}, {p: [[20, C], [200, C]], c: 'var(--brine)', w: 2}, {k: 'dot', p: pts.map(([, t]) => [t, C]), c: 'var(--brine)', r: 6}],
+      tx: [...pts.map(([l, t], i) => ({x: t, y: C, t: W < 520 ? fmt(C / ceqA(t), 1) : `${l} · SSI ${fmt(C / ceqA(t), 2)}`, a: 'middle', dy: i === 1 ? 26 : -14, b: true})), {x: 196, y: ceqA(196), t: 'silika amorf', a: 'end', dx: -6, dy: -8}, {x: 196, y: ceqQ(196), t: 'kuarsa', a: 'end', dy: -8, c: 'var(--mute)'}, {x: 40, y: C, t: 'lewat jenuh', dy: 40, c: 'var(--warn)', b: true}]});
+  });
+  $('#k-ssi').innerHTML = `<thead><tr><th>Sumur</th><th class="n">T</th><th style="width:40%">SSI</th><th class="n">Dosis</th></tr></thead><tbody>${WELLS.map(w => { const x = w.days[TODAY], s = x.ssi; return `<tr><td>${w.id}</td><td class="n">${fmt(x.T)} °C</td><td><div style="display:flex;gap:8px;align-items:center"><div class="ssibar" style="flex:1"><i style="width:${Math.min(100, s / 2.5 * 100)}%"></i><b style="left:40%"></b></div><span class="n">${fmt(s, 2)}</span></div></td><td class="n" style="${x.dose < .8 ? 'color:var(--warn);font-weight:600' : ''}">${fmt(x.dose * 100, 0)}%${x.dose < .8 ? ' kurang' : ''}</td></tr>`; }).join('')}</tbody>`;
+  $('#k-lab').innerHTML = `<thead><tr><th>Tanggal</th><th class="n">SiO₂ total</th><th class="n">pH 25 °C</th><th class="n">T jenuh</th></tr></thead><tbody>${[...LAB].sort((a, b) => b.d - a.d).slice(0, 8).map(l => `<tr><td>${dstr(l.d)}</td><td class="n">${l.c} mg/kg</td><td class="n">${fmt(l.pH)}</td><td class="n">${fmt(tsat(l.c), 0)} °C</td></tr>`).join('')}</tbody>`;
+}
+
+function renderData() {
+  const days = Array.from({length: 30}, (_, i) => N - 30 + i);
+  const inv = WELLS.reduce((s, w) => s + days.filter(d => !w.days[d].valid).length, 0);
+  $('#d-title').textContent = `${WELLS.length * 30 - inv} dari ${WELLS.length * 30} sumur-hari dalam 30 hari terakhir layak dianalisis`;
+  $('#d-heat').innerHTML = WELLS.map(w => `<span>${w.id}</span><div class="cells">${days.map(d => { const x = w.days[d], bg = x.excl || x.Q === 0 ? 'repeating-linear-gradient(45deg,var(--data) 0 3px,transparent 3px 6px)' : x.valid ? 'var(--ok)' : 'var(--warn)'; return `<i title="${dstr(d)}: ${x.hrs} jam stabil" style="background:${bg};opacity:${x.valid ? .35 + .65 * (x.hrs - 18) / 6 : x.excl ? 1 : .55}"></i>`; }).join('')}</div>`).join('') + `<span></span><div class="sub" style="display:flex;justify-content:space-between"><span>${dstr(days[0])}</span><span>${dstr(TODAY)}</span></div>`;
+  reg($('#d-emb'), () => chart($('#d-emb'), {x0: 0, x1: TODAY, y0: -7, y1: 7, yt: [-5, 0, 5], yf: v => v + '%', xt: [[0, '−90 hari', 'start'], [TODAY, 'hari ini', 'end']], hl: [{v: 5, c: 'var(--warn)', l: 'batas ±5%'}, {v: -5, c: 'var(--warn)'}], ser: [{p: EMB.map((v, d) => [d, v]), c: 'var(--brine)', w: 1.5}]}));
+  const pipe = [['GW-01 edge gateway', 'Online', '00.29', 'buffer 0 pesan', '99,2%'], ['MQ-01 broker MQTT', 'Online', '00.29', 'TLS aktif', '99,8%'], ['DB-01 basis data', 'Online', '00.29', '7,8 juta titik', '99,9%'], ['AN-01 mesin analitik', 'Selesai', '00.30', 'evaluasi harian', '100%'], ['Jalur baca historian', 'Baca saja', '00.29', 'OPC UA', '99,2%']];
+  $('#d-pipe').innerHTML = `<thead><tr><th>Komponen</th><th>Status</th><th class="n">Terakhir</th><th>Keterangan</th><th class="n">Tersedia 30 hari</th></tr></thead><tbody>${pipe.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td><td class="sub">${r[3]}</td><td class="n">${r[4]}</td></tr>`).join('')}</tbody>`;
+  $('#d-log').innerHTML = `<thead><tr><th>Tanggal</th><th>Sumur</th><th>Jenis</th><th>Keterangan</th><th>Dampak pada analisis</th></tr></thead><tbody>${[...EVENTS].sort((a, b) => b.d - a.d).map(e => `<tr><td style="white-space:nowrap">${dstr(e.d)}${e.e > e.d ? '–' + dstr(e.e) : ''}</td><td>${esc(e.w)}</td><td>${esc(e.k)}</td><td>${esc(e.t)}</td><td class="sub">${e.k === 'intervensi' ? 'baseline baru mulai 72 jam setelahnya' : e.k === 'shutdown' ? 'hari dikecualikan hingga 72 jam setelah selesai' : 'jam transien dibuang oleh aturan jendela stabil'}</td></tr>`).join('')}</tbody>`;
+  $('#ev-w').innerHTML = WELLS.map(w => `<option>${w.id}</option>`).join('');
+  for (const id of ['#ev-d', '#ev-e', '#lb-d']) { const el = $(id); el.min = diso(0); el.max = diso(TODAY); if (!el.value) el.value = diso(TODAY); }
+}
+
+function detCalc() {
+  const s = +$('#dt-s').value, n = +$('#dt-n').value, md = (sg, nn) => 2 * sg / Math.sqrt(nn * (nn * nn - 1) / 12) * 30;
+  $('#dt-sv').textContent = fmt(s) + '%'; $('#dt-nv').textContent = n + ' hari';
+  $('#dt-res').textContent = fmt(md(s, n)) + '%/bulan';
+  const opts = [7, 14, 30], mx = md(s, 7);
+  $('#dt-cmp').innerHTML = opts.map(k => `<div style="display:grid;grid-template-columns:70px minmax(0,1fr) 90px;gap:8px;align-items:center;font-size:13px;margin:4px 0"><span>${k} hari</span><div class="ssibar"><i style="width:${md(s, k) / mx * 100}%;background:${k === n ? 'var(--ink)' : 'var(--data)'}"></i></div><span class="n" style="text-align:right">${fmt(md(s, k))}%/bln</span></div>`).join('');
+}
+
+function renderAll() {
+  computeAll();
+  if (stage.t3 === null) stage.t3 = WELLS.reduce((s, w) => s + w.days[TODAY].T, 0) / WELLS.length;
+  renderRingkasan(); renderSumur(); renderSilika(); renderData(); detCalc();
+}
+const PAGES = ['ringkasan', 'sumur', 'silika', 'data', 'uji', 'metode'];
+function route() {
+  const h = location.hash.slice(1), p = PAGES.includes(h) ? h : 'ringkasan';
+  $$('.page').forEach(s => { s.hidden = s.id !== 'p-' + p; });
+  $$('nav a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === '#' + p ? 'page' : 'false'));
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-w]');
+  if (t) { sel = +t.dataset.w; renderSumur(); if (t.tagName === 'BUTTON') location.hash = 'sumur'; return; }
+  const b = e.target.closest('[data-tab]');
+  if (b) { sel = +b.dataset.tab; renderSumur(); }
+});
+$('#k-form').addEventListener('input', () => { const v = id => +$(id).value; if (v('#k-t1') && v('#k-t2') && v('#k-t3')) { stage.t1 = v('#k-t1'); stage.t2 = v('#k-t2'); stage.t3 = v('#k-t3'); const C = labAt(TODAY).c; $('#k-title').textContent = `Brine dengan SiO₂ ${C} mg/kg menjadi lewat jenuh silika amorf di bawah ±${fmt(tsat(C), 0)} °C`; renderRingkasan(); const f = draws.get($('#k-ch')); renderSilikaLite(); if (f) f(); } });
+function renderSilikaLite() { const C = labAt(TODAY).c; const pts = [['Separator', stage.t1], ['Setelah pemanfaatan', stage.t2], ['Reinjeksi', stage.t3]]; $('#k-sum').innerHTML = `<table><thead><tr><th>Tahap</th><th class="n">T</th><th class="n">SSI</th></tr></thead><tbody>${pts.map(([l, t]) => `<tr><td>${l}</td><td class="n">${fmt(t, 0)} °C</td><td class="n" style="${C / ceqA(t) > 1 ? 'color:var(--warn);font-weight:600' : ''}">${fmt(C / ceqA(t), 2)}</td></tr>`).join('')}</tbody></table>`; reg($('#k-ch'), draws.get($('#k-ch'))); }
+$('#f-ev').addEventListener('submit', e => {
+  e.preventDefault();
+  const d = dnum($('#ev-d').value), en = Math.max(d, dnum($('#ev-e').value || $('#ev-d').value)), w = $('#ev-w').value, k = $('#ev-k').value;
+  if (!(d >= 0 && d <= TODAY)) { $('#ev-msg').textContent = 'Tanggal di luar rentang data.'; return; }
+  EVENTS.push({d, e: Math.min(en, TODAY), w, k, t: $('#ev-t').value.trim() || {intervensi: 'Intervensi', shutdown: 'Shutdown', operasi: 'Perubahan operasi'}[k]});
+  renderAll();
+  const ww = WELLS.find(x => x.id === w);
+  $('#ev-msg').textContent = `Tersimpan. ${w} sekarang berstatus ${ST[ww.a.ps].l}${k === 'intervensi' ? '; baseline dihitung ulang setelah intervensi' : ''}.`;
+});
+$('#f-lab').addEventListener('submit', e => {
+  e.preventDefault();
+  const d = dnum($('#lb-d').value), c = +$('#lb-c').value, p = +$('#lb-p').value;
+  if (!(d >= 0 && d <= TODAY) || !(c >= 50 && c <= 1500)) { $('#lb-msg').textContent = 'Periksa tanggal dan nilai SiO₂ (50–1500 mg/kg).'; return; }
+  LAB = LAB.filter(l => l.d !== d); LAB.push({d, c: Math.round(c), pH: p || 7});
+  renderAll();
+  $('#lb-msg').textContent = `Tersimpan. Suhu jenuh silika amorf sekarang ±${fmt(tsat(labAt(TODAY).c), 0)} °C.`;
+});
+$('#reset').addEventListener('click', () => { EVENTS = EV0.map(e => ({...e})); LAB = LAB0.map(l => ({...l})); renderAll(); $('#lb-msg').textContent = 'Data simulasi awal dikembalikan.'; });
+$('#f-det').addEventListener('input', detCalc);
+window.addEventListener('hashchange', route);
+const SIMP = {j: 'sumur', l: 10, m: 30, s: 1, seed: 7};
+const JL = {sumur: 'Scaling sumur', pipa: 'Scaling pipa', dosis: 'Kegagalan pompa dosis', shutdown: 'Shutdown', none: 'Tanpa gangguan'};
+const alarm = a => a.ps === 'warn' || a.ps === 'crit';
+let SIMW = null, simDay = TODAY, timer = null;
+function genSim(p, sd) {
+  let s = sd;
+  const r = () => (s = s * 16807 % 2147483647) / 2147483647;
+  const gs = () => { let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); };
+  const w = {id: 'SIM', II0: 16, h: 1100, dz: 10, Qw: 150, Pmax: 15, T0: 61, labC: 415, embf: [], raw: [], truth: []};
+  const R0 = 2.0 / 150 ** 2;
+  for (let d = 0; d < N; d++) {
+    const shut = p.j === 'shutdown' && d >= p.m && d < p.m + 10, k = Math.max(0, d - p.m) / 30 * p.l / 100;
+    const II = p.j === 'sumur' ? w.II0 * (1 - k) : w.II0, Rr = p.j === 'pipa' ? R0 * (1 + k) : R0;
+    const T = w.T0 + 0.8 * gs(), Q = shut ? 0 : 150 * (1 + 0.004 * gs());
+    const Pwhk = shut ? 0 : Q / II * (1 + p.s / 100 * gs());
+    const Pwh = shut ? 0 : Pwhk - G * w.h * (rho(T) - rho(w.T0)) * 1e-5;
+    const Pp = shut ? 0 : Pwh + rho(T) * G * w.dz * 1e-5 + Rr * Q * Q * (1 + 0.01 * gs());
+    const dose = p.j === 'dosis' && d >= p.m ? 0.6 + 0.02 * gs() : 1 + 0.02 * gs();
+    let hrs = shut ? 0 : Math.max(0, Math.min(24, Math.round(22 + 1.2 * gs())));
+    if (!shut && r() < 0.03) hrs = 12;
+    w.raw.push({d, Q, Pwh, Pp, T, dose, hrs});
+    w.truth.push({d, ii: II / w.II0 * 100, r: Rr / R0 * 100});
+  }
+  computeWell(w, p.j === 'shutdown' ? [{d: p.m, e: p.m + 9, w: 'SIM', k: 'shutdown', t: 'Shutdown'}] : []);
+  return w;
+}
+function simMetrics(w, p) {
+  const ev = w.hist.filter(a => a.ps !== 'cal');
+  const pre = p.j === 'none' ? ev : ev.filter(a => a.D < p.m);
+  const o = {fa: pre.filter(alarm).length, nPre: pre.length, det: null, key: null, ok: null};
+  if (['sumur', 'pipa', 'dosis'].includes(p.j)) {
+    const hit = w.hist.find(a => a.D >= p.m && alarm(a));
+    if (hit) { o.det = hit.D - p.m; o.key = hit.key; o.detD = hit.D; }
+    o.ok = hit ? hit.key === {sumur: 'sumur', pipa: 'pipa', dosis: 'dini'}[p.j] : false;
+  }
+  const sg = D => w.hist[D] && w.hist[D].sig && w.hist[D - 1] && w.hist[D - 1].sig;
+  o.ftr = pre.filter(a => sg(a.D)).length;
+  if (p.j === 'sumur') { const t = w.hist.find(a => a.D >= p.m && sg(a.D)); o.tr = t ? t.D - p.m : null; o.trD = t ? t.D : undefined; }
+  if (p.j === 'shutdown') { const dur = w.hist.filter(a => a.D >= p.m && a.D <= p.m + 13); o.ok = dur.some(a => a.ps === 'data') && !dur.some(alarm); }
+  return o;
+}
+function simTitle(p, m) {
+  if (p.j === 'none') return `Tanpa gangguan: ${m.fa} hari alarm palsu dari ${m.nPre} hari evaluasi`;
+  if (p.j === 'shutdown') return m.ok ? 'Shutdown terbaca sebagai Data tidak cukup, tanpa alarm palsu' : 'Shutdown memicu alarm yang tidak semestinya';
+  const lab = p.j === 'dosis' ? JL.dosis : `${JL[p.j]} ${p.l}%/bulan`;
+  if (p.j === 'sumur') return `${lab}: tren terdeteksi ${m.tr !== null ? m.tr + ' hari' : 'tidak'} setelah dimulai, status naik ${m.det !== null ? 'setelah ' + m.det + ' hari' : 'belum dalam ' + (TODAY - p.m) + ' hari'}`;
+  return m.det !== null ? `${lab} terdeteksi ${m.det} hari setelah dimulai` : `${lab} belum terdeteksi dalam ${TODAY - p.m} hari`;
+}
+function readSim() {
+  SIMP.j = $('#u-j').value; SIMP.l = +$('#u-l').value; SIMP.m = +$('#u-m').value; SIMP.s = +$('#u-s').value;
+  $('#u-lv').textContent = ['sumur', 'pipa'].includes(SIMP.j) ? `${SIMP.l}%/bulan` : 'tidak dipakai'; $('#u-l').disabled = !['sumur', 'pipa'].includes(SIMP.j);
+  $('#u-mv').textContent = SIMP.j === 'none' ? 'tidak dipakai' : `${SIMP.m} (${dstr(SIMP.m)})`; $('#u-m').disabled = SIMP.j === 'none';
+  $('#u-sv').textContent = fmt(SIMP.s) + '%';
+}
+function runSim() { readSim(); SIMW = genSim(SIMP, SIMP.seed); stopPlay(); simDay = TODAY; renderUji(); $('#u-mct').innerHTML = ''; $('#u-sent').innerHTML = ''; }
+function renderUji() {
+  const w = SIMW, p = SIMP, m = simMetrics(w, p), a = w.hist[simDay];
+  $('#u-title').textContent = simTitle(p, m);
+  $('#u-day').textContent = `Hari ke-${simDay} (${dstr(simDay)})`;
+  $('#u-st').innerHTML = `<span style="color:${a.ps === 'normal' ? 'inherit' : stc(a.ps)}">${ST[a.ps].l}</span>`;
+  $('#u-int').textContent = MXK[a.key].t + (a.n >= 10 && a.b !== undefined ? ` · laju ${fmt(a.b * 30)}%/bln${a.sig ? ', signifikan' : ''}` : '');
+  const vis = w.days.filter(x => x.d <= simDay), tr = w.truth.filter(x => x.d <= simDay);
+  const vl = [];
+  if (p.j !== 'none') vl.push({v: p.m, l: 'gangguan mulai', c: 'var(--brine)', dash: '3 3'});
+  if (m.trD !== undefined && m.trD <= simDay) vl.push({v: m.trD, l: 'tren signifikan', c: 'var(--ink)', dy: 28});
+  if (m.detD !== undefined && m.detD <= simDay) vl.push({v: m.detD, l: 'terdeteksi', c: 'var(--warn)', dy: 14});
+  reg($('#u-ii'), () => {
+    const v = vis.filter(x => x.valid), mn = Math.min(55, Math.floor(Math.min(...w.days.filter(x => x.valid).map(x => x.ii), ...w.truth.map(x => x.ii)) - 3));
+    const o = {x0: 0, x1: TODAY, y0: mn, y1: 110, yt: [60, 70, 80, 90, 100, 110].filter(t => t >= mn), yf: t => t + '%', xt: [[0, 'hari 0', 'start'], [30, '30'], [60, '60'], [TODAY, 'hari 89', 'end']], vl,
+      bands: [{a: w.baseStart, b: Math.min(w.baseEnd, TODAY), c: 'var(--cal)', op: .1}], hl: [{v: a.warnL, c: 'var(--warn)', l: 'Waspada'}, {v: a.crit, c: 'var(--crit)', l: 'Critical', below: true}],
+      ser: [{p: tr.map(x => [x.d, x.ii]), c: 'var(--brine)', w: 2.5}, {k: 'dot', p: v.map(x => [x.d, x.ii]), c: 'var(--data)'}, {k: 'dot', p: (a.win || []).map(x => [x.d, x.ii]), c: 'var(--ink)', r: 3}]};
+    if (a.n >= 10 && a.b !== undefined) o.ser.push({p: [[simDay - 13, a.a0 + a.b * (simDay - 13)], [simDay, a.level]], c: a.ps === 'normal' ? 'var(--ink)' : stc(a.ps), w: 3.5});
+    chart($('#u-ii'), o);
+  });
+  reg($('#u-r'), () => {
+    const v = vis.filter(x => x.valid), mx = Math.max(140, Math.ceil(Math.max(...w.truth.map(x => x.r), ...w.days.filter(x => x.valid).map(x => x.r)) + 3));
+    chart($('#u-r'), {x0: 0, x1: TODAY, y0: 90, y1: mx, yt: [100, 115, 130].filter(t => t <= mx), yf: t => t + '%', vl, hl: [{v: 115, c: 'var(--warn)'}, {v: 130, c: 'var(--crit)'}], ser: [{p: tr.map(x => [x.d, x.r]), c: 'var(--brine)', w: 2.5}, {k: 'dot', p: v.map(x => [x.d, x.r]), c: 'var(--data)'}]});
+  });
+  $('#u-strip').innerHTML = w.hist.map(h => `<i title="hari ${h.D}: ${ST[h.ps].l}" style="background:${h.D > simDay ? 'transparent' : stc(h.ps)};opacity:${h.ps === 'normal' ? .35 : 1}"></i>`).join('');
+  const cards = [
+    ['Tren II terdeteksi', p.j === 'sumur' ? (m.tr !== null ? `${m.tr} hari` : 'tidak terdeteksi') : p.j === 'pipa' ? 'tidak diuji' : '–', p.j === 'pipa' ? 'R hanya dinilai dengan ambang 115% dan 130%, belum dengan uji tren' : 'regresi 14 hari signifikan 2 hari berturut-turut'],
+    ['Status naik', ['sumur', 'pipa', 'dosis'].includes(p.j) ? (m.det !== null ? `${m.det} hari` : 'tidak terdeteksi') : '–', 'sejak gangguan mulai sampai status Waspada atau Critical'],
+    ['Hari alarm palsu', `${m.fa} dari ${m.nPre}`, `${p.j === 'none' ? 'seluruh hari evaluasi' : 'hari evaluasi sebelum gangguan'}; tren palsu ${m.ftr} hari`],
+    ['Interpretasi', m.ok === null ? '–' : m.ok ? 'benar' : 'salah atau tidak muncul', m.key ? MXK[m.key].t : p.j === 'shutdown' ? 'diharapkan: Data tidak cukup tanpa alarm' : ''],
+    ['Status hari ke-89', ST[w.a.ps].l, MXK[w.a.key].t]];
+  $('#u-cards').innerHTML = cards.map(([k, v, s]) => `<div class="panel"><div class="sub">${k}</div><div class="big" style="font-size:26px;white-space:normal">${esc(v)}</div><div class="sub">${esc(s)}</div></div>`).join('');
+}
+function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $('#u-play').textContent = 'Putar hari demi hari'; }
+$('#u-play').addEventListener('click', () => {
+  if (timer) { stopPlay(); return; }
+  simDay = Math.min(SIMW.baseEnd, TODAY - 1);
+  $('#u-play').textContent = 'Hentikan';
+  timer = setInterval(() => { simDay++; renderUji(); if (simDay >= TODAY) stopPlay(); }, 140);
+});
+$('#f-sim').addEventListener('input', runSim);
+$('#u-run').addEventListener('click', () => { SIMP.seed = Math.floor(rnd() * 2e9) + 1; runSim(); });
+$('#u-mc').addEventListener('click', () => {
+  readSim();
+  const runs = Array.from({length: 50}, (_, i) => { const w = genSim(SIMP, 1000 + i * 7919); return simMetrics(w, SIMP); });
+  const scal = ['sumur', 'pipa', 'dosis'].includes(SIMP.j), det = runs.filter(r => r.det !== null).map(r => r.det).sort((x, y) => x - y);
+  const fa = runs.reduce((s, r) => s + r.fa, 0), np = runs.reduce((s, r) => s + r.nPre, 0), ok = runs.filter(r => r.ok).length;
+  const rows = [];
+  const trs = runs.filter(r => r.tr !== null && r.tr !== undefined).map(r => r.tr).sort((x, y) => x - y), ftr = runs.reduce((s, r) => s + r.ftr, 0);
+  if (SIMP.j === 'sumur') { rows.push(['Tren II terdeteksi', `${trs.length} dari 50`]); if (trs.length) rows.push(['Waktu tren terdeteksi, median (rentang)', `${med(trs)} hari (${trs[0]}–${trs[trs.length - 1]})`]); }
+  if (scal) { rows.push(['Status naik (Waspada/Critical)', `${det.length} dari 50 (${fmt(det.length / 50 * 100, 0)}%)`]); if (det.length) rows.push(['Waktu deteksi, median (rentang)', `${med(det)} hari (${det[0]}–${det[det.length - 1]})`]); rows.push(['Interpretasi benar saat deteksi', `${ok} dari 50`]); }
+  if (SIMP.j === 'shutdown') rows.push(['Shutdown terbaca benar tanpa alarm', `${ok} dari 50`]);
+  rows.push(['Hari alarm palsu', `${fa} dari ${np} hari evaluasi (${fmt(fa / np * 100)}%)`]);
+  rows.push(['Hari tren palsu (regresi signifikan tanpa gangguan)', `${ftr} dari ${np} hari (${fmt(ftr / np * 100)}%)`]);
+  $('#u-mct').innerHTML = `<tbody>${rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td></tr>`).join('')}</tbody>`;
+  const cond = `derau ${fmt(SIMP.s)}%`;
+  const sent = scal ? `Pada 50 skenario ${SIMP.j === 'dosis' ? 'kegagalan pompa dosis' : `${JL[SIMP.j].toLowerCase()} ${SIMP.l}%/bulan`} dengan ${cond}, ${SIMP.j === 'sumur' && trs.length ? `tren penurunan terdeteksi pada ${trs.length} kasus dengan median ${med(trs)} hari setelah gangguan dimulai, dan ` : ''}GeoFlow menaikkan status pada ${det.length} kasus${det.length ? ` dengan median ${med(det)} hari (rentang ${det[0]}–${det[det.length - 1]} hari)` : ' dalam periode uji'}, interpretasi benar pada ${ok} kasus, dan alarm palsu pada ${fmt(fa / np * 100)}% hari evaluasi. Hasil ini berlaku untuk skenario buatan dengan penurunan linear, bukan kinerja di lapangan.`
+    : SIMP.j === 'none' ? `Pada 50 skenario tanpa gangguan dengan ${cond}, status Waspada atau Critical muncul pada ${fmt(fa / np * 100)}% hari evaluasi. Hasil ini berlaku untuk skenario buatan, bukan kinerja di lapangan.`
+    : `Pada 50 skenario shutdown 10 hari dengan ${cond}, ${ok} kasus terbaca sebagai Data tidak cukup tanpa alarm, dan alarm palsu muncul pada ${fmt(fa / np * 100)}% hari evaluasi.`;
+  $('#u-sent').innerHTML = `<div class="sub">Kalimat siap kutip</div><p style="margin:4px 0 8px">${esc(sent)}</p><button class="btn ghost" type="button" id="u-copy">Salin kalimat</button>`;
+  $('#u-copy').addEventListener('click', () => { navigator.clipboard?.writeText(sent).then(() => { $('#u-copy').textContent = 'Tersalin'; }, () => { $('#u-copy').textContent = 'Salin manual dari teks di atas'; }); });
+});
+renderAll(); runSim(); route();
+}
+</script>
+</body>
+</html>
