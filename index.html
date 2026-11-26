@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GeoFlow Reinjeksi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* VOICE work: an engineering monitoring console, calm grey, colour reserved for abnormal states (ISA-101)
    IDEA the plant's process flow diagram come alive: tagged equipment, blue brine lines, status on each well
    PICTURE overview = live PFD of the reinjection line; silika page = solubility curve with the brine's path
-   COLOUR warm grey ground, white panels, ink; brine blue; orange Waspada, red Critical, teal kalibrasi
-   TYPE IBM Plex Sans throughout, weights for hierarchy
+   COLOUR green theme matching the pitch deck; brine green; orange Waspada, red Critical stay fixed (ISA-101); blue kalibrasi
+   TYPE Poppins throughout (same as deck), weights for hierarchy
    LAYOUT laptop: header + tab bar, page title finding, picture full width, cards below; phone: one column, PFD scrolls sideways */
-:root{color-scheme:light dark;--bg:light-dark(#ebeae5,#111214);--panel:light-dark(#ffffff,#1a1b1e);--ink:light-dark(#16181b,#eceef0);--mute:light-dark(#5b5f66,#a3a7ae);--line:light-dark(#d6d5cf,#2f3135);--grid:light-dark(#ecebe6,#232528);--brine:light-dark(#1f5fbf,#5d9bff);--warn:light-dark(#d2600c,#ff8a3d);--crit:light-dark(#c4231b,#ff5b50);--ok:light-dark(#6b7078,#8d9299);--data:light-dark(#a3a8ae,#5d6268);--cal:light-dark(#1f7a86,#5cc3d0);--soft:light-dark(#f5f4f0,#222326)}
+:root{color-scheme:light dark;--bg:light-dark(#eef6f0,#0b1a13);--panel:light-dark(#ffffff,#13241b);--ink:light-dark(#1b2a22,#e6f2ea);--mute:light-dark(#4f6358,#9fb5a7);--line:light-dark(#b7e4c7,#2a4535);--grid:light-dark(#e3f1e7,#1c3327);--brine:light-dark(#2d6a4f,#74c69d);--brand:#1b4332;--brand2:#081c15;--accent:#95d5b2;--warn:light-dark(#d2600c,#ff8a3d);--crit:light-dark(#c4231b,#ff5b50);--ok:light-dark(#6b7078,#8d9299);--data:light-dark(#a3a8ae,#5d6268);--cal:light-dark(#3b6ea5,#7fa8d6);--soft:light-dark(#f4faf6,#1a2f23)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 html{scroll-padding-top:110px}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'IBM Plex Sans',system-ui,sans-serif;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'Poppins',system-ui,sans-serif;overflow-x:clip}
 .wrap{max-width:1240px;margin:0 auto;padding:0 max(16px,3vw)}
-header.top{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header.top{background:linear-gradient(90deg,var(--brand2),var(--brand));border-bottom:4px solid var(--accent);position:sticky;top:0;z-index:5}
 .bar1{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;justify-content:space-between;padding-top:12px}
 .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .brand b{font-size:22px;font-weight:700;letter-spacing:-.01em}
-.brand span{color:var(--mute);font-size:14px}
+.brand b{color:#fff}.brand span{color:#d8f0e0;font-size:14px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-size:13px;color:var(--mute);white-space:nowrap}
-.chip.sim{border-color:var(--warn);color:var(--warn)}
+.chip{border:1px solid #74c69d;border-radius:0;padding:3px 10px;font-size:13px;color:#d8f0e0;white-space:nowrap}
+.chip.sim{border-color:#ffb067;color:#ffb067}
 nav{display:flex;gap:4px;overflow-x:auto;margin-top:6px}
-nav a{flex:none;color:var(--mute);text-decoration:none;padding:10px 14px;border-bottom:3px solid transparent;font-weight:500;min-height:44px;display:flex;align-items:center}
-nav a[aria-current=page]{color:var(--ink);border-bottom-color:var(--ink)}
-nav a:focus-visible{outline:2px solid var(--brine)}
+nav a{flex:none;color:#b7e4c7;text-decoration:none;padding:10px 14px;border-bottom:3px solid transparent;font-weight:500;min-height:44px;display:flex;align-items:center}
+nav a[aria-current=page]{color:#fff;border-bottom-color:var(--accent)}
+nav a:focus-visible{outline:2px solid var(--accent)}
 main{padding:24px 0 48px}
 .page[hidden]{display:none}
 h1{font-size:clamp(26px,3.4vw,38px);line-height:1.08;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance;font-weight:600}
 .lead{color:var(--mute);margin:0 0 20px;max-width:75ch}
-h2{font-size:17px;margin:0 0 12px;font-weight:600}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+h2{font-size:16px;margin:0 0 12px;font-weight:600;color:var(--brine);border-left:4px solid var(--brine);padding-left:10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:0;padding:18px}
 .g{display:grid;gap:14px;margin-top:14px}
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .g3{grid-template-columns:2fr 1fr}
@@ -44,7 +44,7 @@ h2{font-size:17px;margin:0 0 12px;font-weight:600}
 .fig{position:relative;min-height:300px}
 .fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .fig.sm{min-height:150px}.fig.xs{min-height:56px}
-svg text{font:12px 'IBM Plex Sans',sans-serif;fill:var(--mute);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+svg text{font:12px 'Poppins',sans-serif;fill:var(--mute);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
 .gl{stroke:var(--grid)}
 .scroll{overflow-x:auto}
 .pfd{min-width:720px}
@@ -54,10 +54,10 @@ svg text{font:12px 'IBM Plex Sans',sans-serif;fill:var(--mute);paint-order:strok
 .pfd .pipe{fill:none;stroke:var(--brine);stroke-width:3}
 .pfd .steam{fill:none;stroke:var(--crit);stroke-width:2.5}
 .pfd a{cursor:pointer}.pfd a:focus-visible rect{stroke-width:4}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:0;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;font:inherit;color:inherit}
 .card:focus-visible{outline:2px solid var(--brine)}
 .card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.card .hd b{font-size:18px}
+.card .hd{flex-wrap:wrap}.card .hd b{font-size:18px;white-space:nowrap}
 .st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
 .st i{width:10px;height:10px;border-radius:2px;display:inline-block}
 .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:13px;color:var(--mute)}
@@ -74,8 +74,8 @@ svg text{font:12px 'IBM Plex Sans',sans-serif;fill:var(--mute);paint-order:strok
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:12px;height:12px;border-radius:2px;display:inline-block}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.tabs button{min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 15px 'IBM Plex Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px}
-.tabs button[aria-pressed=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.tabs button{min-height:44px;padding:0 16px;border-radius:0;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 15px 'Poppins',sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tabs button[aria-pressed=true]{border-color:var(--brine);box-shadow:inset 0 0 0 1px var(--brine)}
 .tabs button:focus-visible{outline:2px solid var(--brine)}
 .whead{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
 .big{font-size:clamp(26px,3vw,34px);font-weight:600;line-height:1.1;white-space:nowrap}
@@ -84,30 +84,30 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th{color:var(--mute);font-weight:500;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:bottom}
 td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-tr.on td{background:color-mix(in srgb,var(--brine) 10%,transparent)}
+tr.on td{background:color-mix(in srgb,var(--brine) 12%,transparent)}
 tr.on td:first-child{box-shadow:inset 3px 0 0 var(--brine)}
 .ssibar{position:relative;height:12px;background:var(--soft);border-radius:3px}
 .ssibar i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--brine)}
 .ssibar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
 form{display:grid;gap:10px}
 label{font-size:13px;color:var(--mute);display:grid;gap:4px}
-input,select{font:16px 'IBM Plex Sans',sans-serif;min-height:44px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);color:var(--ink);width:100%}
+input,select{font:16px 'Poppins',sans-serif;min-height:44px;padding:6px 10px;border-radius:0;border:1px solid var(--line);background:var(--soft);color:var(--ink);width:100%}
 input:focus-visible,select:focus-visible{outline:2px solid var(--brine)}
 input[type=range]{padding:0;accent-color:var(--brine)}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.btn{min-height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--panel);font:600 15px 'IBM Plex Sans',sans-serif;cursor:pointer;justify-self:start}
-.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn{min-height:44px;padding:0 18px;border-radius:0;border:1px solid var(--brine);background:var(--brine);color:var(--panel);font:600 15px 'Poppins',sans-serif;cursor:pointer;justify-self:start}
+.btn.ghost{background:transparent;color:var(--brine);border-color:var(--brine)}
 .btn:focus-visible{outline:2px solid var(--brine);outline-offset:2px}
 .msg{font-size:14px;color:var(--cal);min-height:1.5em}
 .heat{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 10px;align-items:center;font-size:13px}
 .heat .cells{height:24px}
-.f{font-size:16px;padding:10px 12px;background:var(--soft);border-radius:8px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.f{font-size:16px;padding:10px 12px;background:var(--soft);border-radius:0;margin:8px 0;overflow-x:auto;white-space:nowrap}
 ol.steps{margin:0;padding-left:22px}ol.steps li{margin:6px 0}
 dl{margin:0;display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:8px 16px}
 dt{font-weight:600}dd{margin:0;color:var(--mute)}
 .res{font-size:clamp(30px,4vw,44px);font-weight:600;line-height:1.1}
 .note{font-size:13px;color:var(--mute);margin-top:8px}
-.banner{border:1px dashed var(--warn);border-radius:8px;padding:10px 14px;color:var(--ink);font-size:14px;margin:0 0 16px;background:color-mix(in srgb,var(--warn) 7%,transparent)}
+.banner{border:1px dashed var(--warn);border-radius:0;padding:10px 14px;color:var(--ink);font-size:14px;margin:0 0 16px;background:color-mix(in srgb,var(--warn) 7%,transparent)}
 .strip{display:flex;gap:1px;height:22px;margin-top:6px}.strip i{flex:1;border-radius:1px}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 .mc td:first-child{color:var(--mute)}
@@ -467,14 +467,14 @@ function renderRingkasan() {
   s += `<rect x="30" y="66" width="80" height="150" rx="30" class="eq"/><text x="70" y="138" class="t c">V-101</text><text x="70" y="156" class="t2 c">Separator</text>`;
   s += `<path d="M70 66V30" class="steam"/><path d="M64 38L70 28L76 38z" style="fill:var(--crit)"/><text x="80" y="42" class="t2">uap ke turbin</text>`;
   s += `<path d="M110 120H176" class="pipe"/><text x="114" y="108" class="t2">±${fmt(stage.t1, 0)} °C</text>`;
-  s += `<rect x="176" y="88" width="164" height="64" rx="4" class="eq" stroke-dasharray="5 4"/><text x="258" y="116" class="t c">Pemanfaatan panas</text><text x="258" y="134" class="t2 c">ORC dan langsung</text>`;
+  s += `<rect x="176" y="88" width="164" height="64" class="eq" stroke-dasharray="5 4"/><text x="258" y="116" class="t c">Pemanfaatan panas</text><text x="258" y="134" class="t2 c">ORC dan langsung</text>`;
   s += `<path d="M340 120H372" class="pipe"/><circle cx="388" cy="120" r="16" class="eq"/><path d="M382 112L396 120L382 128z" class="eq"/><text x="388" y="92" class="t2 c">P-401</text>`;
   s += `<path d="M404 120H${xs[4]}" class="pipe"/><text x="414" y="108" class="t2">header reinjeksi ±${fmt(T3, 0)} °C · SiO₂ ${labAt(TODAY).c} mg/kg</text>`;
   WELLS.forEach((w, i) => {
     const x = xs[i], a = w.a, hot = a.ps === 'warn' || a.ps === 'crit';
     s += `<path d="M${x} 120V194" class="pipe"/>`;
     s += `<a href="#sumur" data-w="${i}" aria-label="${w.id} ${ST[a.ps].l}"><rect x="${x - 12}" y="194" width="24" height="7" class="eq"/><line x1="${x - 6}" y1="201" x2="${x - 6}" y2="232" class="eq"/><line x1="${x + 6}" y1="201" x2="${x + 6}" y2="232" class="eq"/><line x1="${x - 28}" y1="214" x2="${x + 28}" y2="214" class="eq"/>`;
-    s += `<rect x="${x - 46}" y="240" width="92" height="88" rx="6" style="fill:${hot ? `color-mix(in srgb,${stc(a.ps)} 12%,transparent)` : 'transparent'};stroke:${hot ? stc(a.ps) : 'var(--ink)'};stroke-width:${hot ? 2.5 : 1.3}"/>`;
+    s += `<rect x="${x - 46}" y="240" width="92" height="88" style="fill:${hot ? `color-mix(in srgb,${stc(a.ps)} 12%,transparent)` : 'transparent'};stroke:${hot ? stc(a.ps) : 'var(--ink)'};stroke-width:${hot ? 2.5 : 1.3}"/>`;
     s += `<text x="${x}" y="262" class="t c" style="font-weight:600">${w.id}</text><text x="${x}" y="282" class="t2 c" style="fill:${hot || a.ps !== 'normal' ? stc(a.ps) : 'var(--mute)'};font-weight:600">${a.ps === 'data' ? 'Data kurang' : a.ps === 'cal' ? 'Kalibrasi' : ST[a.ps].l}</text><text x="${x}" y="302" class="t2 c">II ${Number.isFinite(a.level) ? fmt(a.level, 0) + '%' : '–'}</text><text x="${x}" y="318" class="t2 c">${w.raw[TODAY].Q > 0 ? Math.round(w.raw[TODAY].Q) + ' t/jam' : 'tidak beroperasi'}</text></a>`;
   });
   s += `</svg>`;
